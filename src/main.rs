@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use anyhow::Result;
@@ -8,7 +7,7 @@ use async_std::net::TcpStream;
 use async_std::task::sleep;
 use structopt::StructOpt;
 
-const DATA:&[u8]=&[1,2,3,4,5,6,7,8,9,0];
+const DATA:&[u8]=&[1];
 
 static COUNT_SECS:AtomicU64=AtomicU64::new(0);
 
@@ -31,24 +30,17 @@ async fn main() -> Result<()> {
         let addr=opt.addrs.clone();
         joins.push(task::spawn::<_,Result<()>>(async move{
             println!("start {} connect:{}",connect_id,addr);
-            let stream= Arc::new(TcpStream::connect(&addr).await?);
+            let mut stream = TcpStream::connect(&addr).await?;
 
-            let reader=stream.clone();
             let join=task::spawn::<_,Result<()>>(async move {
-                let mut read = &*reader;
+
                 let mut data =[0u8;DATA.len()];
                 loop{
-                    read.read_exact(&mut data).await?;
+                    stream.write_all(DATA).await?;
+                    stream.read_exact(&mut data[..]).await?;
                     COUNT_SECS.fetch_add(1,Ordering::Release);
                 }
             });
-
-            let mut sender=&*stream;
-            loop{
-                if sender.write_all(DATA).await.is_err(){
-                    break;
-                }
-            }
 
             join.await?;
             Ok(())
@@ -57,7 +49,8 @@ async fn main() -> Result<()> {
 
     task::spawn(async move{
        loop{
-           let count= COUNT_SECS.swap(0,Ordering::Release);
+
+           let count=COUNT_SECS.swap(0,Ordering::Acquire);
            println!("{} tps",count);
            sleep(Duration::from_secs(1)).await;
        }
