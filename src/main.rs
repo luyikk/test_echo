@@ -19,8 +19,8 @@ async fn main() -> Result<()> {
     {
         let (soft, hard) = rlimit::Resource::NOFILE.get()?;
         if soft < opt.connects {
-            println!("set limit max open file:{}", opt.connects * 2);
-            rlimit::Resource::NOFILE.set(opt.connects * 2, opt.connects * 2)?;
+            println!("set limit max open file:{}", opt.connects);
+            rlimit::Resource::NOFILE.set(opt.connects, opt.connects)?;
         }
     }
 
@@ -34,9 +34,9 @@ async fn main() -> Result<()> {
 
             let join=task::spawn::<_,Result<()>>(async move {
 
-                let mut data =[0u8;DATA.len()];
+                let mut data =[1u8;DATA.len()];
                 loop{
-                    stream.write_all(DATA).await?;
+                    stream.write_all(&data).await?;
                     stream.read_exact(&mut data[..]).await?;
                     COUNT_SECS.fetch_add(1,Ordering::Release);
                 }
