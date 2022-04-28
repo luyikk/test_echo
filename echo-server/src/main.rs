@@ -80,8 +80,9 @@ async fn echo(stream: Async<TcpStream>) -> io::Result<()> {
     Ok(())
 }
 
-fn main()->Result<()> {
-   let handler:Result<()>= smol::block_on(async move{
+#[tokio::main]
+async fn main()->Result<()> {
+   //let handler:Result<()>= smol::block_on(async move{
        let listener = Async::<TcpListener>::bind(([0, 0, 0, 0], 55555))?;
        loop {
            let (stream, peer_addr) = listener.accept().await?;
@@ -91,7 +92,7 @@ fn main()->Result<()> {
        }
 
         Ok(())
-    });
+   // });
 
-    handler
+    //handler
 }
