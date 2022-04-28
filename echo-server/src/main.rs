@@ -18,7 +18,15 @@ async fn main()->Result<()> {
         let stream = stream?;
         task::spawn(async move{
             let (reader, writer) = &mut (&stream, &stream);
-            let _=io::copy(reader, writer).await;
+
+            loop {
+                let mut b = [0u8];
+                if reader.read(&mut b).await? == 0 {
+                    break;
+                }
+                writer.write(&b).await?;
+            }
+            //let _=io::copy(reader, writer).await;
         });
     }
 
