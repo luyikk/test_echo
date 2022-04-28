@@ -12,3 +12,7 @@ anyhow = "1"
 rlimit = "0.8.3"
 smol="1"
 async-net = "1.4.3"
+async-executor="1.4.1"
+easy-parallel = "3"
+async-channel = "1.4.1"
+futures-lite={version="1"}

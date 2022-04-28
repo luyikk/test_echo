@@ -72,7 +72,11 @@
 
 use anyhow::Result;
 use std::net::{TcpListener, TcpStream};
+use async_executor::Executor;
+use async_channel::unbounded;
+use easy_parallel::Parallel;
 use smol::{io, Async};
+use futures_lite::future;
 
 #[inline]
 async fn echo(stream: Async<TcpStream>) -> io::Result<()> {
@@ -80,16 +84,41 @@ async fn echo(stream: Async<TcpStream>) -> io::Result<()> {
     Ok(())
 }
 
-#[tokio::main]
-async fn main()->Result<()> {
+
+
+fn main()->Result<()> {
+    let ex = Executor::new();
+    let (signal, shutdown) = unbounded::<()>();
+
+    Parallel::new()
+        // Run four executor threads.
+        .each(0..16, |_| future::block_on(ex.run(async move {
+            shutdown.recv().await.unwrap()
+        })))
+        // Run the main future on the current thread.
+        .finish(||{
+
+        future::block_on(async {
+            let listener = Async::<TcpListener>::bind(([0, 0, 0, 0], 55555)).unwrap();
+            loop {
+                let (stream, peer_addr) = listener.accept().await.unwrap();
+                println!("Accepted client: {}", peer_addr);
+                // Spawn a task that echoes messages from the client back to it.
+                ex.spawn(echo(stream)).detach();
+              }
+                drop(signal);
+            });
+        });
+
+
    //let handler:Result<()>= smol::block_on(async move{
-       let listener = Async::<TcpListener>::bind(([0, 0, 0, 0], 55555))?;
-       loop {
-           let (stream, peer_addr) = listener.accept().await?;
-           println!("Accepted client: {}", peer_addr);
-           // Spawn a task that echoes messages from the client back to it.
-           smol::spawn(echo(stream)).detach();
-       }
+   //     let listener = Async::<TcpListener>::bind(([0, 0, 0, 0], 55555))?;
+   //     loop {
+   //         let (stream, peer_addr) = listener.accept().await?;
+   //         println!("Accepted client: {}", peer_addr);
+   //         // Spawn a task that echoes messages from the client back to it.
+   //         smol::spawn(echo(stream)).detach();
+   //     }
 
         Ok(())
    // });
