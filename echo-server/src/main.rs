@@ -7,8 +7,8 @@ use anyhow::Result;
 async fn main()->Result<()> {
     #[cfg(target_os = "linux")]
     {
-        println!("set limit max open file:{}", 200000);
-        rlimit::Resource::NOFILE.set(200000, 200000)?;
+        println!("set limit max open file:{}", 5000);
+        rlimit::Resource::NOFILE.set(5000, 5000)?;
     }
 
     let listener = TcpListener::bind("127.0.0.1:2000").await?;
@@ -16,7 +16,7 @@ async fn main()->Result<()> {
 
     while let Some(stream) = incoming.next().await {
         let stream = stream?;
-        task::spawn(async move{
+        task::spawn::<_,Result<()>>(async move{
             let (reader, writer) = &mut (&stream, &stream);
 
             loop {
@@ -26,6 +26,8 @@ async fn main()->Result<()> {
                 }
                 writer.write(&b).await?;
             }
+
+            Ok(())
             //let _=io::copy(reader, writer).await;
         });
     }
